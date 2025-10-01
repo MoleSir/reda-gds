@@ -1,0 +1,13 @@
+[package]
+name = "reda-gds"
+version = "0.1.0"
+edition = "2024"
+description = "GDSII file library"
+repository = "https://github.com/MoleSir/reda-gds.git"
+license = "MIT"
+
+[dependencies]
+chrono = "0.4.41"
+derive_builder = "0.20.2"
+thiserror = "2.0.12"
+clap = { version = "4.4.0", features = ["derive"] }
