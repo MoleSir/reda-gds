@@ -1,7 +1,7 @@
 use reda_gds::GdsLibrary;
 
 fn main_result() -> Result<(), Box<dyn std::error::Error>> {
-    let lib = GdsLibrary::read_gds("./data/cell_err.gds")?;
+    let lib = GdsLibrary::load_file("./data/cell_err.gds")?;
     eprintln!("{}", lib.name);
     Ok(())
 }

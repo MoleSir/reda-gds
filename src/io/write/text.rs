@@ -15,6 +15,12 @@ impl TextWriter<File> {
 }
 
 impl<W: std::io::Write> TextWriter<W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
+    }
+}
+
+impl<W: std::io::Write> TextWriter<W> {
     pub fn write(&mut self, layout: &GdsLibrary) -> GdsWriteResult<()> {
         let indent = 0;
         self.write_indent(indent)?;
@@ -213,15 +219,13 @@ impl<W: std::io::Write> TextWriter<W> {
             writeln!(self.writer)?;
         
             self.write_indent(attr_indent)?;
-            writeln!(self.writer, "mag: {}", transform.magnification)?;
+            writeln!(self.writer, "mag: {}", transform.magnification())?;
             self.write_indent(attr_indent)?;
-            writeln!(self.writer, "angle: {}", transform.angle)?;
+            writeln!(self.writer, "angle: {}", transform.angle())?;
         }
 
-        if let Some(coord) = sref.xy.get(0) {
-            self.write_indent(attr_indent)?;
-            writeln!(self.writer, "coordinate: [{}, {}]", coord.x, coord.y)?;
-        }
+        self.write_indent(attr_indent)?;
+        writeln!(self.writer, "coordinate: [{}, {}]", sref.position.x, sref.position.y)?;
 
         Ok(())
     }
@@ -260,9 +264,9 @@ impl<W: std::io::Write> TextWriter<W> {
             writeln!(self.writer)?;
         
             self.write_indent(attr_indent)?;
-            writeln!(self.writer, "mag: {}", transform.magnification)?;
+            writeln!(self.writer, "mag: {}", transform.magnification())?;
             self.write_indent(attr_indent)?;
-            writeln!(self.writer, "angle: {}", transform.angle)?;
+            writeln!(self.writer, "angle: {}", transform.angle())?;
         }
 
         self.write_indent(attr_indent)?;
@@ -271,10 +275,8 @@ impl<W: std::io::Write> TextWriter<W> {
         self.write_indent(attr_indent)?;
         writeln!(self.writer, "row: {}", aref.row)?;
 
-        if let Some(coord) = aref.xy.get(0) {
-            self.write_indent(attr_indent)?;
-            writeln!(self.writer, "coordinate: [{}, {}]", coord.x, coord.y)?;
-        }
+        self.write_indent(attr_indent)?;
+        writeln!(self.writer, "coordinate: [{}, {}]", aref.position.x, aref.position.y)?;
 
         Ok(())
     }
@@ -329,15 +331,13 @@ impl<W: std::io::Write> TextWriter<W> {
             writeln!(self.writer)?;
             
             self.write_indent(attr_indent)?;
-            writeln!(self.writer, "mag: {}", transform.magnification)?;
+            writeln!(self.writer, "mag: {}", transform.magnification())?;
             self.write_indent(attr_indent)?;
-            writeln!(self.writer, "angle: {}", transform.angle)?;
+            writeln!(self.writer, "angle: {}", transform.angle())?;
         }
 
-        if let Some(coord) = text.xy.get(0) {
-            self.write_indent(attr_indent)?;
-            writeln!(self.writer, "coordinate: [{}, {}]", coord.x, coord.y)?;
-        }
+        self.write_indent(attr_indent)?;
+        writeln!(self.writer, "coordinate: [{}, {}]", text.position.x, text.position.y)?;
 
         self.write_indent(attr_indent)?;
         writeln!(self.writer, "string: {}", text.string)?;

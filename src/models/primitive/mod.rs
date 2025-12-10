@@ -2,6 +2,7 @@ mod presentation;
 mod transform;
 
 pub use presentation::*;
+use reda_geometry::shape::Point;
 pub use transform::*;
 
 use std::fmt;
@@ -126,20 +127,5 @@ impl fmt::Display for GdsDateTime {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct GdsDbCoord {
-    pub x: i32,
-    pub y: i32,
-}
+pub type GdsCoord = Point<i32>;
 
-impl GdsDbCoord {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
-    }
-}
-
-impl fmt::Display for GdsDbCoord {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
-    }
-}

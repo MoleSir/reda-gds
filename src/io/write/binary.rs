@@ -1,5 +1,5 @@
 use std::{fs::File, io::Write, path::Path};
-use crate::{GdsAref, GdsBoundary, GdsBox, GdsDateTime, GdsDbCoord, GdsFormat, GdsLibrary, GdsNode, GdsPath, GdsPathType, GdsPresentation, GdsSref, GdsStructure, GdsText, GdsTransform};
+use crate::{GdsAref, GdsBoundary, GdsBox, GdsDateTime, GdsCoord, GdsFormat, GdsLibrary, GdsNode, GdsPath, GdsPathType, GdsPresentation, GdsSref, GdsStructure, GdsText, GdsTransform};
 use crate::io::{record::GdsRecordType, GdsWriteResult};
 
 pub struct GdsWriter<W> {
@@ -17,6 +17,12 @@ impl<W: Write> GdsWriter<W> {
     pub fn write(&mut self, gds: &GdsLibrary) -> GdsWriteResult<()> {
         self.write_header(&gds)?;
         self.write_library(gds)
+    }
+}
+
+impl<W: std::io::Write> GdsWriter<W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
     }
 }
 
@@ -215,7 +221,7 @@ impl<W: std::io::Write> GdsWriter<W> {
         if let Some(transform) = &sref.transform {
             self.write_transform_record(transform)?;
         }
-        self.write_xy_record(&sref.xy)?;
+        self.write_xy_record(&[sref.position])?;
         self.write_element_end_record()
     }
 
@@ -233,7 +239,7 @@ impl<W: std::io::Write> GdsWriter<W> {
             self.write_transform_record(transform)?;
         }
         self.write_colrow_record(aref.col, aref.row)?;
-        self.write_xy_record(&aref.xy)?;
+        self.write_xy_record(&[aref.position])?;
         self.write_element_end_record()
     }
 
@@ -260,7 +266,7 @@ impl<W: std::io::Write> GdsWriter<W> {
         if let Some(transform) = &text.transform {
             self.write_transform_record(transform)?;
         }
-        self.write_xy_record(&text.xy)?;
+        self.write_xy_record(&[text.position])?;
         self.write_ascii_string_record(&text.string)?;
         self.write_element_end_record()
     }
@@ -318,7 +324,7 @@ impl<W: Write> GdsWriter<W> {
         self.write_i16_record(GdsRecordType::DataType, data_type)
     }
 
-    pub fn write_xy_record(&mut self, coords: &[GdsDbCoord]) -> GdsWriteResult<()> {
+    pub fn write_xy_record(&mut self, coords: &[GdsCoord]) -> GdsWriteResult<()> {
         let record_size = 4 + coords.len() * 8;
         self.write_record(record_size, GdsRecordType::Xy)?;
         for coord in coords {
@@ -344,12 +350,12 @@ impl<W: Write> GdsWriter<W> {
         let value = tranform.flag.to_u16();
         self.write_u16_record(GdsRecordType::STrans, value)?;
 
-        if tranform.magnification != 1.0 {
-            self.write_f64_record(GdsRecordType::Mag, tranform.magnification)?;
+        if let Some(magnification) = tranform.magnification {
+            self.write_f64_record(GdsRecordType::Mag, magnification)?;
         }
 
-        if tranform.angle != 0.0 {
-            self.write_f64_record(GdsRecordType::Angle, tranform.angle)?;
+        if let Some(angle) = tranform.angle {
+            self.write_f64_record(GdsRecordType::Angle, angle)?;
         }
 
         Ok(())

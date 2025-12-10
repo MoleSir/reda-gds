@@ -52,6 +52,9 @@ pub enum GdsReadError {
     #[error("Build library failed for '{0}'")]
     BuildLibrary(#[from] GdsLibraryBuilderError),
 
+    #[error("Except one coord in XY, but got {0}")]
+    ExecptPosition(usize),
+
     #[error("When {0} >> {1}")]
     Wrap(String, Box<GdsReadError>)
 }

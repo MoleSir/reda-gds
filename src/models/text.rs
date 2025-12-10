@@ -1,9 +1,9 @@
-use crate::{GdsDbCoord, GdsTransform};
+use crate::{GdsCoord, GdsTransform};
 use derive_builder::Builder;
 use super::{GdsPathType, GdsPresentation};
 
 #[derive(Debug, Clone, Builder)]
-#[builder(setter(strip_option))]
+#[builder(setter(strip_option, into))]
 pub struct GdsText {
     #[builder(default)]
     pub elf_flags: Option<i16>,
@@ -12,7 +12,7 @@ pub struct GdsText {
 
     pub layer: i16,
     pub text_type: i16,
-    pub xy: Vec<GdsDbCoord>,
+    pub position: GdsCoord,
     pub string: String,
 
     #[builder(default)]
@@ -24,4 +24,16 @@ pub struct GdsText {
 
     #[builder(default)]
     pub transform: Option<GdsTransform>,
+}
+
+impl GdsText {
+    pub fn new(layer: i16, position: impl Into<GdsCoord>, text: impl Into<String>) -> Self {
+        GdsTextBuilder::default()
+            .layer(layer)
+            .text_type(0i16)
+            .position(position)
+            .string(text)
+            .build()
+            .unwrap()
+    }
 }

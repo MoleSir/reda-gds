@@ -15,8 +15,8 @@ struct Cli {
 
 fn main_result() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    let library = GdsLibrary::read_gds(cli.input_path)?;
-    library.write_text(cli.output_path)?;
+    let library = GdsLibrary::load_file(cli.input_path)?;
+    library.save_text_file(cli.output_path)?;
     Ok(())
 }
 

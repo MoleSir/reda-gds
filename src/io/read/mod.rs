@@ -8,7 +8,7 @@ use std::path::Path;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    GdsAref, GdsArefBuilder, GdsArefBuilderError, GdsBoundary, GdsBoundaryBuilder, GdsBoundaryBuilderError, GdsBox, GdsBoxBuilder, GdsBoxBuilderError, GdsDateTime, GdsDbCoord, GdsFormat, GdsLibrary, GdsLibraryBuilder, GdsNode, GdsNodeBuilder, GdsNodeBuilderError, GdsPath, GdsPathBuilder, GdsPathBuilderError, GdsPathType, GdsPresentation, GdsSref, GdsSrefBuilder, GdsSrefBuilderError, GdsStructure, GdsText, GdsTextBuilder, GdsTextBuilderError, GdsTransform
+    GdsAref, GdsArefBuilder, GdsArefBuilderError, GdsBoundary, GdsBoundaryBuilder, GdsBoundaryBuilderError, GdsBox, GdsBoxBuilder, GdsBoxBuilderError, GdsDateTime, GdsCoord, GdsFormat, GdsLibrary, GdsLibraryBuilder, GdsNode, GdsNodeBuilder, GdsNodeBuilderError, GdsPath, GdsPathBuilder, GdsPathBuilderError, GdsPathType, GdsPresentation, GdsSref, GdsSrefBuilder, GdsSrefBuilderError, GdsStructure, GdsText, GdsTextBuilder, GdsTextBuilderError, GdsTransform
 };
 use super::record::GdsRecordType;
 
@@ -23,11 +23,11 @@ impl GdsReader<File> {
     }
 }
 
-// impl<R: Read + Seek> GdsReader<R> {
-//     pub fn with_reader(reader: R) -> GdsReadResult<Self> {
-//         Ok(Self { reader: BufReader::new(reader) })
-//     }
-// }
+impl<R: Read + Seek> GdsReader<R> {
+    pub fn new(reader: R) -> GdsReadResult<Self> {
+        Ok(Self { reader: BufReader::new(reader) })
+    }
+}
 
 impl<R: Read + Seek> GdsReader<R> {
     pub fn read(&mut self) -> GdsReadResult<GdsLibrary> {
@@ -303,7 +303,7 @@ impl<R: Read + Seek> GdsReader<R> {
         read_optional_field!(builder.plex      <- self.take_i32_record      if Plex);
         read_required_field!(builder.s_name    <- self.take_string_record   if SName     => BuildSref(GdsSrefBuilderError));
         read_optional_field!(builder.transform <- self.read_transform       if STrans);
-        read_required_field!(builder.xy        <- self.read_xy              if Xy        => BuildSref(GdsSrefBuilderError));
+        read_required_field!(builder.position  <- self.read_position        if Xy        => BuildSref(GdsSrefBuilderError));
 
         self.read_element_end()?;
         Ok(builder.build()?)
@@ -323,7 +323,7 @@ impl<R: Read + Seek> GdsReader<R> {
             builder.col(col);
             builder.row(row);
         }
-        read_required_field!(builder.xy        <- self.read_xy        if Xy        => BuildAref(GdsArefBuilderError));
+        read_required_field!(builder.position  <- self.read_position        if Xy        => BuildSref(GdsSrefBuilderError));
 
         self.read_element_end()?;
         Ok(builder.build()?)
@@ -341,7 +341,7 @@ impl<R: Read + Seek> GdsReader<R> {
         read_optional_field!(builder.path_type     <- self.read_path_type      if PathType);
         read_optional_field!(builder.width         <- self.take_i32_record     if Width);
         read_optional_field!(builder.transform     <- self.read_transform      if STrans);
-        read_required_field!(builder.xy            <- self.read_xy             if Xy        => BuildText(GdsTextBuilderError));
+        read_required_field!(builder.position      <- self.read_position       if Xy        => BuildSref(GdsSrefBuilderError));
         read_required_field!(builder.string        <- self.take_string_record  if String    => BuildText(GdsTextBuilderError));
 
         self.read_element_end()?;
@@ -396,7 +396,7 @@ impl<R: Read + Seek> GdsReader<R> {
         Ok((col, row))
     }
 
-    pub fn read_xy(&mut self) -> GdsReadResult<Vec<GdsDbCoord>> {
+    pub fn read_xy(&mut self) -> GdsReadResult<Vec<GdsCoord>> {
         let mut header = [0u8; 4];
         self.reader.read_exact(&mut header)?;
         let record_size = u16::from_be_bytes([header[0], header[1]]) as usize;
@@ -417,9 +417,36 @@ impl<R: Read + Seek> GdsReader<R> {
         for _ in 0..position_count {
             let x = self.take_i32()?;
             let y = self.take_i32()?;
-            coords.push(GdsDbCoord { x, y });
+            coords.push(GdsCoord::new( x, y ));
         }
         Ok(coords)
+    }
+
+    pub fn read_position(&mut self) -> GdsReadResult<GdsCoord> {
+        let mut header = [0u8; 4];
+        self.reader.read_exact(&mut header)?;
+        let record_size = u16::from_be_bytes([header[0], header[1]]) as usize;
+        let record_type = u16::from_be_bytes([header[2], header[3]]);
+        let rec_type = GdsRecordType::from_u16(record_type)
+            .ok_or(GdsReadError::UnsupportRecordType(record_type))?;
+
+        if rec_type != GdsRecordType::Xy {
+            return Err(GdsReadError::UnexpectRecordType(GdsRecordType::Xy, rec_type));
+        }
+
+        if record_size < 4 || (record_size - 4) % 8 != 0 {
+            return Err(GdsReadError::InvalidRecordSize(record_size));
+        }
+
+        let position_count = (record_size - 4) / 8;
+        if position_count != 1 {
+            return Err(GdsReadError::ExecptPosition(position_count));
+        }
+
+        let x = self.take_i32()?;
+        let y = self.take_i32()?;
+
+        Ok((x, y).into())
     }
 
     pub fn read_transform(&mut self) -> GdsReadResult<GdsTransform> {
@@ -429,12 +456,12 @@ impl<R: Read + Seek> GdsReader<R> {
 
         // Is mag?
         if self.peek_record_type()? == GdsRecordType::Mag {
-            transform.magnification = self.take_f64_record()?;
+            transform.magnification = Some(self.take_f64_record()?);
         }
 
         // If angle
         if self.peek_record_type()? == GdsRecordType::Angle {
-            transform.angle = self.take_f64_record()?;
+            transform.angle = Some(self.take_f64_record()?);
         }
 
         Ok(transform)

@@ -1,5 +1,5 @@
 use derive_builder::Builder;
-use crate::GdsDbCoord;
+use crate::GdsCoord;
 
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(strip_option))]
@@ -11,5 +11,5 @@ pub struct GdsNode {
 
     pub layer: i16,
     pub node_type: i16,
-    pub xy: Vec<GdsDbCoord>,
+    pub xy: Vec<GdsCoord>,
 }

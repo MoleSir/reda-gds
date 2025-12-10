@@ -1,5 +1,7 @@
 
 use std::collections::HashMap;
+use std::io::Read;
+use std::io::Seek;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -33,20 +35,34 @@ pub struct GdsLibrary {
     pub structures: HashMap<String, Arc<RwLock<GdsStructure>>>,
 }
 
-
 impl GdsLibrary {
-    pub fn read_gds<P: AsRef<Path>>(path: P) -> GdsReadResult<Self> {
+    pub fn load_file<P: AsRef<Path>>(path: P) -> GdsReadResult<Self> {
         let mut reader = GdsReader::open(path)?;
         reader.read()
     }
 
-    pub fn write_gds<P: AsRef<Path>>(&self, path: P) -> GdsWriteResult<()> {
+    pub fn save_gds_file<P: AsRef<Path>>(&self, path: P) -> GdsWriteResult<()> {
         let mut writer = GdsWriter::open(path)?;
         writer.write(self)
     }
 
-    pub fn write_text<P: AsRef<Path>>(&self, path: P) -> GdsWriteResult<()> {
+    pub fn save_text_file<P: AsRef<Path>>(&self, path: P) -> GdsWriteResult<()> {
         let mut writer = TextWriter::open(path)?;
+        writer.write(self)
+    }
+
+    pub fn read<R: Read + Seek>(reader: R) -> GdsReadResult<Self> {
+        let mut reader = GdsReader::new(reader)?;
+        reader.read()
+    }
+    
+    pub fn write_gds<W: std::io::Write>(&self, writer: W) -> GdsWriteResult<()> {
+        let mut writer = GdsWriter::new(writer);
+        writer.write(self)
+    }
+
+    pub fn write_text<W: std::io::Write>(&self, writer: W) -> GdsWriteResult<()> {
+        let mut writer = TextWriter::new(writer);
         writer.write(self)
     }
 }
